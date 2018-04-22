@@ -8,7 +8,6 @@ from input_config import *
 FLOW_SCALE = 5.0
 dir_base = "../data/DAVIS/"
 
-
 def flownet(im1, im2, flownet_spec='S', full_resolution=False, train_all=False,
             backward_flow=False):
     num_batch, height, width, _ = tf.unstack(tf.shape(im1))
@@ -148,7 +147,7 @@ def _flownet_upconv(conv6_1, conv5_1, conv4_1, conv3_1, conv2, conv1=None, input
             flow2_up1 = slim.conv2d_transpose(flow2, channels, 4, stride=2,
                                              scope='flow2_up1',
                                              activation_fn=None)
-            concat1 = tf.concat([conv1, deconv1, flow2_up1], 1)
+            concat1 = tf.concat([conv1, deconv1, flow2_up1], 3)
             flow1 = slim.conv2d(concat1, channels, 3, scope='flow1',
                                 activation_fn=None)
 
@@ -157,7 +156,7 @@ def _flownet_upconv(conv6_1, conv5_1, conv4_1, conv3_1, conv2, conv1=None, input
             flow1_up0 = slim.conv2d_transpose(flow1, channels, 4, stride=2,
                                              scope='flow1_up0',
                                              activation_fn=None)
-            concat0 = tf.concat([inputs, deconv0, flow1_up0], 1)
+            concat0 = tf.concat([inputs, deconv0, flow1_up0], 3)
             flow0 = slim.conv2d(concat0, channels, 3, scope='flow0',
                                 activation_fn=None)
 
@@ -169,7 +168,7 @@ def main():
     data_dic, labels_dic = read_data_label_dir("/ImageSets/480p/train.txt")
     im1, im2 = input_raw(data_dic['bear'])
 
-    flows_fw = flownet(im1, im2, flownet_spec='S', full_resolution=False, train_all=False, backward_flow=False)
+    flows_fw = flownet(im1, im2, flownet_spec='S', full_resolution=True, train_all=False, backward_flow=False)
     with tf.Session() as sess:
         tf.global_variables_initializer().run()
 

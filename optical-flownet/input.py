@@ -81,7 +81,7 @@ def input_raw(filenames, swap_images=False, labels=False, batch_size=None, num_t
         image_1 = tf.reshape(_resize_crop_or_pad(image_1), [reshape_height, reshape_width, channel])
         image_2 = tf.reshape(_resize_crop_or_pad(image_2), [reshape_height, reshape_width, channel])
 
-        print(image_1.get_shape())
+        #print(image_1.get_shape())
         # if self.normalize:
         #     image_1 = self._normalize_image(image_1)
         #     image_2 = self._normalize_image(image_2)

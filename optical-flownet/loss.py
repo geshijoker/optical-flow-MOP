@@ -2,8 +2,10 @@
 """
 
 import tensorflow as tf
+from image_warp import *
+import numpy as np
 
-def flow_loss(img1, img2, optical):
+def flow_loss(im1, im2, flow_fw):
     """Calculate the loss from the logits and the labels.
     Args:
       img1: tensor, float - the first frame.
@@ -16,21 +18,19 @@ def flow_loss(img1, img2, optical):
         losses = {}
 
         im2_warped = image_warp(im2, flow_fw)
-        im1_warped = image_warp(im1, flow_bw)
+        #im1_warped = image_warp(im1, flow_bw)
 
         im_diff_fw = im1 - im2_warped
-        im_diff_bw = im2 - im1_warped
+        #im_diff_bw = im2 - im1_warped
 
-        losses['photo'] =  (photometric_loss(im_diff_fw, mask_fw) +
-                        photometric_loss(im_diff_bw, mask_bw))
+        mask_fw = tf.ones_like(im_diff_fw)
+        losses['photo'] =  (photometric_loss(im_diff_fw, mask_fw))
 
-        losses['grad'] = (gradient_loss(im1, im2_warped, mask_fw) +
-                      gradient_loss(im2, im1_warped, mask_bw))
+        losses['grad'] = (gradient_loss(im1, im2_warped, mask_fw))
 
-        losses['smooth_1st'] = (smoothness_loss(flow_fw) +
-                            smoothness_loss(flow_bw))
+        losses['smooth_1st'] = (smoothness_loss(flow_fw))
 
-    return loss
+    return losses
 
 def photometric_loss(im_diff, mask):
     return charbonnier_loss(im_diff, mask, beta=255)
@@ -42,8 +42,14 @@ def gradient_loss(im1, im2_warped, mask):
     with tf.variable_scope('gradient_loss'):
         mask_x = create_mask(im1, [[0, 0], [1, 1]])
         mask_y = create_mask(im1, [[1, 1], [0, 0]])
-        gradient_mask = tf.tile(tf.concat(axis=3, values=[mask_x, mask_y]), [1, 1, 1, 3])
+        #gradient_mask = tf.tile(tf.concat(axis=3, values=[mask_x, mask_y]), [1, 1, 1, 3])
+        #gradient_mask = tf.ones_like(mask)
         diff = _gradient_delta(im1, im2_warped)
+        mask = tf.ones_like(diff)
+        gradient_mask = tf.ones_like(diff)
+        print("diff", diff.get_shape())
+        print("mask", mask.get_shape())
+        print("gradient_mask", gradient_mask.get_shape())
         return charbonnier_loss(diff, mask * gradient_mask)
 
 def create_mask(tensor, paddings):
@@ -68,6 +74,8 @@ def _gradient_delta(im1, im2_warped):
             weight_array[:, :, c, 2 * c + 1] = filter_y
         weights = tf.constant(weight_array, dtype=tf.float32)
 
+        print("im1",im1.get_shape())
+        print("weights",weights.get_shape())
         im1_grad = conv2d(im1, weights)
         im2_warped_grad = conv2d(im2_warped, weights)
         diff = im1_grad - im2_warped_grad

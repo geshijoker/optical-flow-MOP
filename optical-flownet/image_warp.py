@@ -9,6 +9,8 @@ def image_warp(im, flow):
     Returns:
         warped: transformed image of the same shape as the input image.
     """
+    print("warp im",im.get_shape())
+    print("warp flow",flow.get_shape())
     with tf.variable_scope('image_warp'):
 
         num_batch, height, width, channels = tf.unstack(tf.shape(im))
