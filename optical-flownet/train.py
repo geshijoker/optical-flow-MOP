@@ -2,65 +2,65 @@ from unsupervised import unsupervised_loss
 import tensorflow as tf
 
 class Trainer():
-    def __init__(self, train_batch_fn, val_batch_fn, batch_size = 10, loss = None, epochs = 5, learning_rate = 5e3):
+    def __init__(self, train_batch_fn, val_batch_fn = None, batch_size = 10, loss = None, epochs = 5, learning_rate = 5e-1):
         self.train_batch_fn = train_batch_fn
-        self.val_batch_fn = val_batch_fn
-        if loss = None:
+        if not val_batch_fn == None:
+            self.val_batch_fn = val_batch_fn
+        if not loss == None:
+            self.loss_fn = loss
+        else:
             self.loss_fn = unsupervised_loss
         self.lr = learning_rate
         self.batch_size = batch_size
+        self.epochs = epochs
+        self.devices = ["/gpu:0"]
 
     def run(self):
-        num_train = tf.shape(self.train_batch_fn)[0]
-        iterations_per_epoch = max(num_train / self.batch_size, 1)
+        num_train = tf.shape(self.train_batch_fn)[1]
+        iterations_per_epoch = tf.cast(tf.maximum(num_train / self.batch_size, 1), tf.int32)
         num_iterations = self.epochs * iterations_per_epoch
-        for t in xrange(num_iterations):
-            train()
+        #for t in xrange(num_iterations):
+        #for i in range(2):
+        self.train()
+        # with tf.Session() as sess:
+        #     tf.global_variables_initializer().run()
+
+        #     coord = tf.train.Coordinator()
+        #     threads = tf.train.start_queue_runners(coord=coord)
+
+        #     image_tensor = sess.run([num_iterations])
+        #     print(image_tensor)
+        #     print(tf.shape(image_tensor))
+
+        #     coord.request_stop()
+        #     coord.join(threads)
 
     def get_train_and_loss_ops(self, batch, learning_rate):
-        if self.params['flownet'] == 'resnet':
-            opt = tf.train.MomentumOptimizer(learning_rate, 0.9)
-        else:
-            opt = tf.train.AdamOptimizer(beta1=0.9, beta2=0.999,
-                                         learning_rate=learning_rate)
+        opt = tf.train.AdamOptimizer(beta1=0.9, beta2=0.999,
+                                        learning_rate=learning_rate)
         # def _add_summaries():
         #     _add_loss_summaries()
         #     _add_param_summaries()
         #     if self.debug:
         #         _add_image_summaries()
 
-        if len(self.devices) == 1:
-            loss_ = self.loss_fn(batch, self.params, self.normalization)
-            train_op = opt.minimize(loss_)
-            # _add_summaries()
-        else:
-            tower_grads = []
-            with tf.variable_scope(tf.get_variable_scope()):
-                for i, devid in enumerate(self.devices):
-                    with tf.device(devid):
-                        with tf.name_scope('tower_{}'.format(i)) as scope:
-                            loss_ = self.loss_fn(batch, self.params, self.normalization)
-                            # _add_summaries()
+        
+        loss_ = self.loss_fn(batch, params=None, normalization=None, return_flow=False)
+        #train_op = opt.minimize(loss_)
+        grads = opt.compute_gradients(loss_)
 
-                            # Reuse variables for the next tower.
-                            tf.get_variable_scope().reuse_variables()
 
-                            # Retain the summaries from the final tower.
-                            tower_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES,
-                                                                scope)
-                            grads = opt.compute_gradients(loss_)
-                            tower_grads.append(grads)
-
-            grads = average_gradients(tower_grads)
-            apply_gradient_op = opt.apply_gradients(grads)
-            train_op = apply_gradient_op
-
-        return train_op, loss_
+        #return train_op, loss_
+        return grads
 
 
 
-    def train(self, batch_size = 20):
-        # N = tf.shape(self.train_batch_fn)[0]
+    def train(self):
+        learning_rate_ = tf.placeholder(tf.int32, name="learning_rate")
+        global_step_ = tf.placeholder(tf.int32, name="global_step")
+        #train_op, loss_ = self.get_train_and_loss_ops(self.train_batch_fn, learning_rate_)
+        grads_ = self.get_train_and_loss_ops(self.train_batch_fn, learning_rate_)
+
 
         # num_batches = N / batch_size
         # if N % batch_size != 0:
@@ -70,40 +70,25 @@ class Trainer():
         #     start = i * batch_size
         #     end = (i + 1) * batch_size
         #     train_op, loss_ = self.get_train_and_loss_ops(batch, self.lr)
-        
+        sess_config = tf.ConfigProto(allow_soft_placement=True)
+        with tf.Session(config=sess_config) as sess:
+            tf.global_variables_initializer().run()
 
-def average_gradients(tower_grads):
-    """Calculate the average gradient for each shared variable across all towers.
-    Note that this function provides a synchronization point across all towers.
-    Args:
-    tower_grads: List of lists of (gradient, variable) tuples. The outer list
-      is over individual gradients. The inner list is over the gradient
-      calculation for each tower.
-    Returns:
-     List of pairs of (gradient, variable) where the gradient has been averaged
-     across all towers.
-    """
-    average_grads = []
-    for grad_and_vars in zip(*tower_grads):
-        # Note that each grad_and_vars looks like the following:
-        #   ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
-        grads = []
-        for g, _ in grad_and_vars:
-            if g is not None:
-                # Add 0 dimension to the gradients to represent the tower.
-                expanded_g = tf.expand_dims(g, 0)
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+            learning_rate = self.lr
+            # for i in range(2):
+            #     print("Loop:", i)
+            #     feed_dict = {learning_rate_: learning_rate}
+            #     print("train_op:", type(train_op))
+            #     print("loss_:",type(loss_))
+            #     print("feed_dict:",type(feed_dict))
+            #     _, loss  = sess.run([train_op, loss_], feed_dict=feed_dict)
+            #     print(loss)
+            #     print(tf.shape(loss))
 
-                # Append on a 'tower' dimension which we will average over below.
-                grads.append(expanded_g)
-        if grads != []:
-            # Average over the 'tower' dimension.
-            grad = tf.concat(grads, 0)
-            grad = tf.reduce_mean(grad, 0)
-
-            # Keep in mind that the Variables are redundant because they are shared
-            # across towers. So .. we will just return the first tower's pointer to
-            # the Variable.
-            v = grad_and_vars[0][1]
-            grad_and_var = (grad, v)
-            average_grads.append(grad_and_var)
-    return average_grads
+            feed_dict = {learning_rate_: learning_rate}
+            grads  = sess.run([grads_], feed_dict=feed_dict)
+            print("grads", grads)
+            coord.request_stop()
+            coord.join(threads)
