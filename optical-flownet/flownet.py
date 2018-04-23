@@ -75,21 +75,30 @@ def flownet_s(inputs, channel_mult=1, full_res=False):
     """
     m = channel_mult
 
-    with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
+    with slim.arg_scope([slim.conv2d, slim.batch_norm, slim.conv2d_transpose],
                         data_format='NHWC',
                         weights_regularizer=slim.l2_regularizer(0.0004),
                         weights_initializer=layers.variance_scaling_initializer(),
                         activation_fn=_leaky_relu):
         conv1 = slim.conv2d(inputs, int(64 * m), 7, stride=2, scope='conv1')
-        conv2 = slim.conv2d(conv1, int(128 * m), 5, stride=2, scope='conv2')
-        conv3 = slim.conv2d(conv2, int(256 * m), 5, stride=2, scope='conv3')
-        conv3_1 = slim.conv2d(conv3, int(256 * m), 3, stride=1, scope='conv3_1')
-        conv4 = slim.conv2d(conv3_1, int(512 * m), 3, stride=2, scope='conv4')
-        conv4_1 = slim.conv2d(conv4, int(512 * m), 3, stride=1, scope='conv4_1')
-        conv5 = slim.conv2d(conv4_1, int(512 * m), 3, stride=2, scope='conv5')
-        conv5_1 = slim.conv2d(conv5, int(512 * m), 3, stride=1, scope='conv5_1')
-        conv6 = slim.conv2d(conv5_1, int(1024 * m), 3, stride=2, scope='conv6')
-        conv6_1 = slim.conv2d(conv6, int(1024 * m), 3, stride=1, scope='conv6_1')
+        batch1 = slim.batch_norm(conv1, scope="batch1")
+        conv2 = slim.conv2d(batch1, int(128 * m), 5, stride=2, scope='conv2')
+        batch2 = slim.batch_norm(conv2, scope="batch2")
+        conv3 = slim.conv2d(batch2, int(256 * m), 5, stride=2, scope='conv3')
+        batch3 = slim.batch_norm(conv3, scope="batch3")
+        conv3_1 = slim.conv2d(batch3, int(256 * m), 3, stride=1, scope='conv3_1')
+        batch3_1 = slim.batch_norm(conv3_1, scope="batch3_1")
+        conv4 = slim.conv2d(batch3_1, int(512 * m), 3, stride=2, scope='conv4')
+        batch4 = slim.batch_norm(conv4, scope="batch4")
+        conv4_1 = slim.conv2d(batch4, int(512 * m), 3, stride=1, scope='conv4_1')
+        batch4_1 = slim.batch_norm(conv4_1, scope="batch4_1")
+        conv5 = slim.conv2d(batch4_1, int(512 * m), 3, stride=2, scope='conv5')
+        batch5 = slim.batch_norm(conv5, scope="batch5")
+        conv5_1 = slim.conv2d(batch5, int(512 * m), 3, stride=1, scope='conv5_1')
+        batch5_1 = slim.batch_norm(conv5_1, scope="batch5_1")
+        conv6 = slim.conv2d(batch5_1, int(1024 * m), 3, stride=2, scope='conv6')
+        batch6 = slim.batch_norm(conv6, scope="batch6")
+        conv6_1 = slim.conv2d(batch6, int(1024 * m), 3, stride=1, scope='conv6_1')
 
 
         res = _flownet_upconv(conv6_1, conv5_1, conv4_1, conv3_1, conv2, conv1, inputs,
