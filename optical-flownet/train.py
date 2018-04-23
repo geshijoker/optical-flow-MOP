@@ -2,7 +2,7 @@ from unsupervised import unsupervised_loss
 import tensorflow as tf
 
 class Trainer():
-    def __init__(self, train_batch_fn, val_batch_fn = None, batch_size = 10, loss = None, epochs = 5, learning_rate = 5e-1):
+    def __init__(self, train_batch_fn, val_batch_fn = None, batch_size = 10, loss = None, epochs = 5, learning_rate = 2e-3):
         self.train_batch_fn = train_batch_fn
         if not val_batch_fn == None:
             self.val_batch_fn = val_batch_fn
@@ -46,20 +46,21 @@ class Trainer():
 
         
         loss_ = self.loss_fn(batch, params=None, normalization=None, return_flow=False)
-        #train_op = opt.minimize(loss_)
-        grads = opt.compute_gradients(loss_)
+        #print("tf.trainable_variables(): ", tf.trainable_variables())
+        train_op = opt.minimize(loss_)
+        #grads = opt.compute_gradients(loss_)
 
 
-        #return train_op, loss_
-        return grads
+        return train_op, loss_
+        #return grads
 
 
 
     def train(self):
         learning_rate_ = tf.placeholder(tf.int32, name="learning_rate")
         global_step_ = tf.placeholder(tf.int32, name="global_step")
-        #train_op, loss_ = self.get_train_and_loss_ops(self.train_batch_fn, learning_rate_)
-        grads_ = self.get_train_and_loss_ops(self.train_batch_fn, learning_rate_)
+        train_op, loss_ = self.get_train_and_loss_ops(self.train_batch_fn, learning_rate_)
+        #grads_ = self.get_train_and_loss_ops(self.train_batch_fn, learning_rate_)
 
 
         # num_batches = N / batch_size
@@ -77,18 +78,18 @@ class Trainer():
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
             learning_rate = self.lr
-            # for i in range(2):
-            #     print("Loop:", i)
-            #     feed_dict = {learning_rate_: learning_rate}
-            #     print("train_op:", type(train_op))
-            #     print("loss_:",type(loss_))
-            #     print("feed_dict:",type(feed_dict))
-            #     _, loss  = sess.run([train_op, loss_], feed_dict=feed_dict)
-            #     print(loss)
-            #     print(tf.shape(loss))
+            for i in range(2):
+                print("Loop:", i)
+                feed_dict = {learning_rate_: learning_rate}
+                print("train_op:", type(train_op))
+                print("loss_:",type(loss_))
+                print("feed_dict:",type(feed_dict))
+                _, loss  = sess.run([train_op, loss_], feed_dict=feed_dict)
+                print(loss)
+                print(tf.shape(loss))
 
-            feed_dict = {learning_rate_: learning_rate}
-            grads  = sess.run([grads_], feed_dict=feed_dict)
-            print("grads", grads)
+            # feed_dict = {learning_rate_: learning_rate}
+            # grads  = sess.run([grads_], feed_dict=feed_dict)
+            # print("grads", grads)
             coord.request_stop()
             coord.join(threads)
